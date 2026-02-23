@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Documentation Reference Requirement
+
+**IMPORTANT**: Before generating ANY code, Claude Code MUST first consult the relevant documentation files in the `/docs` directory to understand project-specific standards, guidelines, and requirements. All code generated should strictly adhere to the specifications outlined in these documentation files.
+
+Available documentation:
+- `docs/ui.md` — UI coding standards and component library guidelines
+
 ## Commands
 
 ```bash
