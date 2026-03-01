@@ -8,6 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Available documentation:
 - `docs/ui.md` — UI coding standards and component library guidelines
+- `docs/datafetching.md` - data handling guidelines
 
 ## Commands
 

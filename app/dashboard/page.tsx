@@ -1,65 +1,39 @@
-"use client"
-
-import { useState } from "react"
 import { format, parseISO } from "date-fns"
-import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { getUserWorkoutsForDate } from "@/data/workouts"
+import { redirect } from "next/navigation"
+import { DateSelector } from "@/components/date-selector"
 
-// Mock workout data for demonstration
-const mockWorkouts = [
-  {
-    id: 1,
-    name: "Upper Body Strength",
-    exercises: ["Bench Press", "Pull-ups", "Overhead Press"],
-    duration: 45,
-    type: "Strength",
-    completedAt: new Date(),
-  },
-  {
-    id: 2,
-    name: "Cardio Session",
-    exercises: ["Treadmill", "Rowing"],
-    duration: 30,
-    type: "Cardio",
-    completedAt: new Date(),
-  },
-  {
-    id: 3,
-    name: "Leg Day",
-    exercises: ["Squats", "Deadlifts", "Leg Press"],
-    duration: 60,
-    type: "Strength",
-    completedAt: new Date(),
-  },
-]
+interface DashboardPageProps {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}
 
-export default function DashboardPage() {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+  // Await the searchParams promise
+  const resolvedSearchParams = await searchParams
+
+  // Get date from search params or default to today
+  const dateParam = resolvedSearchParams.date
+  const selectedDate = dateParam && typeof dateParam === 'string'
+    ? parseISO(dateParam + 'T00:00:00')
+    : new Date()
 
   const formatSelectedDate = (date: Date): string => {
     return format(date, "do MMM yyyy")
   }
 
-  const formatDateForInput = (date: Date): string => {
-    return format(date, "yyyy-MM-dd")
-  }
-
-  const handleDateChange = (dateString: string) => {
-    if (dateString) {
-      const newDate = parseISO(dateString + "T00:00:00")
-      setSelectedDate(newDate)
+  let workoutsForDate
+  try {
+    workoutsForDate = await getUserWorkoutsForDate(selectedDate)
+  } catch (error) {
+    // Handle unauthorized access
+    if (error instanceof Error && error.message === "Unauthorized") {
+      redirect("/sign-in")
     }
+    throw error
   }
-
-  const getWorkoutsForDate = (date: Date) => {
-    // In a real app, this would filter workouts based on the selected date
-    // For now, we'll just return mock data for any selected date
-    return mockWorkouts
-  }
-
-  const workoutsForDate = getWorkoutsForDate(selectedDate)
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
@@ -73,32 +47,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Date Picker Section */}
         <div className="lg:col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle>Select Date</CardTitle>
-              <CardDescription>
-                Choose a date to view workouts
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="workout-date" className="text-sm font-medium">
-                  Workout Date
-                </label>
-                <Input
-                  id="workout-date"
-                  type="date"
-                  value={formatDateForInput(selectedDate)}
-                  onChange={(e) => handleDateChange(e.target.value)}
-                  className="w-full"
-                />
-              </div>
-              <div className="rounded-lg bg-muted/50 p-4 text-center">
-                <p className="text-sm text-muted-foreground mb-1">Selected Date</p>
-                <p className="text-lg font-semibold">{formatSelectedDate(selectedDate)}</p>
-              </div>
-            </CardContent>
-          </Card>
+          <DateSelector selectedDate={selectedDate} />
         </div>
 
         {/* Workouts List Section */}
@@ -130,7 +79,8 @@ export default function DashboardPage() {
                       <div>
                         <CardTitle className="text-lg">{workout.name}</CardTitle>
                         <CardDescription>
-                          {workout.duration} minutes • {workout.exercises.length} exercises
+                          {workout.duration ? `${workout.duration} minutes • ` : ""}
+                          {workout.exercises.length} exercise{workout.exercises.length !== 1 ? "s" : ""}
                         </CardDescription>
                       </div>
                       <Badge
@@ -144,9 +94,9 @@ export default function DashboardPage() {
                     <div className="mb-4">
                       <h4 className="font-medium text-sm mb-2">Exercises:</h4>
                       <div className="flex flex-wrap gap-2">
-                        {workout.exercises.map((exercise, index) => (
-                          <Badge key={index} variant="outline">
-                            {exercise}
+                        {workout.exercises.map((exercise) => (
+                          <Badge key={exercise.id} variant="outline">
+                            {exercise.name}
                           </Badge>
                         ))}
                       </div>
