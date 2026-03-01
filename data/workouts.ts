@@ -63,7 +63,7 @@ export async function getUserWorkouts(): Promise<WorkoutWithExercises[]> {
       workout.exercises.push({
         id: row.exerciseId,
         name: row.exerciseName,
-        order: row.exerciseOrder,
+        order: row.exerciseOrder ?? 0,
       })
     }
   })
@@ -129,7 +129,7 @@ export async function getUserWorkoutsForDate(date: Date): Promise<WorkoutWithExe
       workout.exercises.push({
         id: row.exerciseId,
         name: row.exerciseName,
-        order: row.exerciseOrder,
+        order: row.exerciseOrder ?? 0,
       })
     }
   })
@@ -185,7 +185,7 @@ export async function getUserWorkoutById(workoutId: number): Promise<WorkoutWith
       workout.exercises.push({
         id: row.exerciseId,
         name: row.exerciseName,
-        order: row.exerciseOrder,
+        order: row.exerciseOrder ?? 0,
       })
     }
   })
