@@ -10,7 +10,9 @@
       "Bash(npm run:*)",
       "Bash(pkill:*)",
       "Bash(npx shadcn@latest:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }
