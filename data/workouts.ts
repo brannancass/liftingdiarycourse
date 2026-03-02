@@ -192,3 +192,60 @@ export async function getUserWorkoutById(workoutId: number): Promise<WorkoutWith
 
   return workout
 }
+
+export async function createWorkout(data: {
+  name: string
+  startedAt: Date
+  userId: string
+  exercises: Array<{
+    name: string
+    order: number
+  }>
+}): Promise<{ workout: WorkoutWithExercises }> {
+  const userId = await requireAuth()
+
+  try {
+    // Create workout first
+    const [workout] = await db
+      .insert(workouts)
+      .values({
+        name: data.name,
+        startedAt: data.startedAt,
+        userId: data.userId,
+        createdAt: new Date()
+      })
+      .returning()
+
+    // Create exercises if provided
+    let workoutExercises: { id: number; name: string; order: number }[] = []
+    if (data.exercises.length > 0) {
+      workoutExercises = await db
+        .insert(exercises)
+        .values(
+          data.exercises.map((exercise, index) => ({
+            workoutId: workout.id,
+            name: exercise.name,
+            order: exercise.order ?? index + 1,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          }))
+        )
+        .returning()
+    }
+
+    return {
+      workout: {
+        id: workout.id,
+        name: workout.name,
+        startedAt: workout.startedAt,
+        completedAt: workout.completedAt,
+        createdAt: workout.createdAt,
+        exercises: workoutExercises,
+        type: "Strength"
+      }
+    }
+  } catch (error) {
+    console.error("Error creating workout:", error)
+    throw new Error("Failed to create workout")
+  }
+}
