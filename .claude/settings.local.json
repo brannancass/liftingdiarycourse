@@ -9,7 +9,9 @@
       "mcp__neon__run_sql",
       "Bash(npm run:*)",
       "Bash(pkill:*)",
-      "Bash(npx shadcn@latest:*)"
+      "Bash(npx shadcn@latest:*)",
+      "Bash(git merge:*)",
+      "Bash(git add:*)"
     ]
   }
 }
