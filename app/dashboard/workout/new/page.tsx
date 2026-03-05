@@ -15,8 +15,20 @@ interface Exercise {
   order: number
 }
 
+type ActionState = {
+  success: boolean
+  workout?: any
+  message?: string
+  redirectTo?: string
+  error?: string
+  fieldErrors?: {
+    name?: string[]
+    exercises?: string[]
+  }
+} | null
+
 export default function NewWorkoutPage() {
-  const [state, formAction, isPending] = useActionState(createWorkoutAction, null)
+  const [state, formAction, isPending] = useActionState<ActionState, FormData>(createWorkoutAction, null)
   const [exercises, setExercises] = useState<Exercise[]>([
     { name: "", order: 1 }
   ])

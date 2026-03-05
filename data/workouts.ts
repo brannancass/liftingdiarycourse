@@ -249,3 +249,85 @@ export async function createWorkout(data: {
     throw new Error("Failed to create workout")
   }
 }
+
+export async function updateWorkout(data: {
+  id: number
+  name: string
+  exercises: Array<{
+    id?: number
+    name: string
+    order: number
+  }>
+}): Promise<{ workout: WorkoutWithExercises }> {
+  const userId = await requireAuth()
+
+  try {
+    // First, verify the workout belongs to the user
+    const existingWorkout = await db
+      .select()
+      .from(workouts)
+      .where(
+        and(
+          eq(workouts.id, data.id),
+          eq(workouts.userId, userId)
+        )
+      )
+      .limit(1)
+
+    if (existingWorkout.length === 0) {
+      throw new Error("Workout not found")
+    }
+
+    // Update workout name
+    const [updatedWorkout] = await db
+      .update(workouts)
+      .set({ name: data.name })
+      .where(
+        and(
+          eq(workouts.id, data.id),
+          eq(workouts.userId, userId)
+        )
+      )
+      .returning()
+
+    // Delete existing exercises for this workout
+    await db
+      .delete(exercises)
+      .where(eq(exercises.workoutId, data.id))
+
+    // Insert new/updated exercises
+    let workoutExercises: { id: number; name: string; order: number }[] = []
+    if (data.exercises.length > 0) {
+      workoutExercises = await db
+        .insert(exercises)
+        .values(
+          data.exercises.map((exercise) => ({
+            workoutId: data.id,
+            name: exercise.name,
+            order: exercise.order,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          }))
+        )
+        .returning()
+    }
+
+    return {
+      workout: {
+        id: updatedWorkout.id,
+        name: updatedWorkout.name,
+        startedAt: updatedWorkout.startedAt,
+        completedAt: updatedWorkout.completedAt,
+        createdAt: updatedWorkout.createdAt,
+        exercises: workoutExercises,
+        type: "Strength"
+      }
+    }
+  } catch (error) {
+    console.error("Error updating workout:", error)
+    if (error instanceof Error && error.message === "Workout not found") {
+      throw error
+    }
+    throw new Error("Failed to update workout")
+  }
+}

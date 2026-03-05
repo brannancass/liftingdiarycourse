@@ -11,6 +11,8 @@ Available documentation:
 - `docs/datafetching.md` - data handling guidelines
 - `docs/auth.md` — Authentication standards and Clerk integration guidelines
 - `docs/data-mutations.md` - Standards for data mutations
+- `docs/server-components.md` - Standards for server components
+- `docs/All.md` — Routing standards and dashboard-based route protection guidelines
 
 ## Commands
 

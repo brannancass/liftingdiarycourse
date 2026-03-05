@@ -21,24 +21,25 @@ const CreateWorkoutSchema = z.object({
 
 // Server Action with useActionState signature
 export async function createWorkoutAction(prevState: any, formData: FormData) {
+  // Extract data from FormData and convert exercises from JSON
+  const name = formData.get("name") as string
+  const startedAt = formData.get("startedAt") as string
+  const exercisesJson = formData.get("exercises") as string
+
+  let exercises: Array<{ name: string; order: number }> = []
   try {
-    // Extract data from FormData and convert exercises from JSON
-    const name = formData.get("name") as string
-    const startedAt = formData.get("startedAt") as string
-    const exercisesJson = formData.get("exercises") as string
-
-    let exercises: Array<{ name: string; order: number }> = []
-    try {
-      exercises = JSON.parse(exercisesJson)
-    } catch (parseError) {
-      console.error("Error parsing exercises JSON:", parseError)
-      return {
-        success: false,
-        error: "Invalid exercises data format"
-      }
+    exercises = JSON.parse(exercisesJson)
+  } catch (parseError) {
+    console.error("Error parsing exercises JSON:", parseError)
+    return {
+      success: false,
+      error: "Invalid exercises data format"
     }
+  }
 
-    const data = { name, startedAt, exercises }
+  const data = { name, startedAt, exercises }
+
+  try {
 
     // Log the input data for debugging (remove in production)
     console.log("Creating workout:", { name: data.name, exerciseCount: data.exercises.length })
