@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { getUserWorkoutsForDate } from "@/data/workouts"
 import { redirect } from "next/navigation"
-import { DateSelector } from "@/components/date-selector"
+import { DatePopover } from "@/components/date-popover"
 import Link from "next/link"
 
 interface DashboardPageProps {
@@ -45,88 +45,84 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Date Picker Section */}
-        <div className="lg:col-span-1">
-          <DateSelector selectedDate={selectedDate} />
+      {/* Date selection and Add Workout row */}
+      <div className="flex items-center justify-between mb-6">
+        <DatePopover selectedDate={selectedDate} />
+        <Button asChild>
+          <Link href="/dashboard/workout/new">Add Workout</Link>
+        </Button>
+      </div>
+
+      {/* Full-width workouts section */}
+      <div className="space-y-4">
+        <div className="mb-4">
+          <h2 className="text-2xl font-semibold">
+            Workouts for {formatSelectedDate(selectedDate)}
+          </h2>
+          <p className="text-muted-foreground">
+            {workoutsForDate.length} workout{workoutsForDate.length !== 1 ? "s" : ""} logged
+          </p>
         </div>
 
-        {/* Workouts List Section */}
-        <div className="lg:col-span-2">
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-2xl font-semibold">
-                Workouts for {formatSelectedDate(selectedDate)}
-              </h2>
-              <Button asChild>
-                <Link href="/dashboard/workout/new">Add Workout</Link>
-              </Button>
-            </div>
-            <p className="text-muted-foreground">
-              {workoutsForDate.length} workout{workoutsForDate.length !== 1 ? "s" : ""} logged
-            </p>
+        {workoutsForDate.length === 0 ? (
+          <Card>
+            <CardContent className="text-center py-12">
+              <p className="text-muted-foreground mb-4">
+                No workouts logged for this date
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Click "Add Workout" above to get started!
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {workoutsForDate.map((workout) => (
+              <Card key={workout.id} className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="text-lg">{workout.name}</CardTitle>
+                      <CardDescription>
+                        {workout.duration ? `${workout.duration} minutes • ` : ""}
+                        {workout.exercises.length} exercise{workout.exercises.length !== 1 ? "s" : ""}
+                      </CardDescription>
+                    </div>
+                    <Badge
+                      variant={workout.type === "Strength" ? "default" : "secondary"}
+                    >
+                      {workout.type}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="mb-4">
+                    <h4 className="font-medium text-sm mb-2">Exercises:</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {workout.exercises.map((exercise) => (
+                        <Badge key={exercise.id} variant="outline">
+                          {exercise.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/dashboard/workout/${workout.id}`}>
+                        View Details
+                      </Link>
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/dashboard/workout/${workout.id}`}>
+                        Edit
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
-
-          {workoutsForDate.length === 0 ? (
-            <Card>
-              <CardContent className="text-center py-12">
-                <p className="text-muted-foreground mb-4">
-                  No workouts logged for this date
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Click "Add Workout" above to get started!
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {workoutsForDate.map((workout) => (
-                <Card key={workout.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg">{workout.name}</CardTitle>
-                        <CardDescription>
-                          {workout.duration ? `${workout.duration} minutes • ` : ""}
-                          {workout.exercises.length} exercise{workout.exercises.length !== 1 ? "s" : ""}
-                        </CardDescription>
-                      </div>
-                      <Badge
-                        variant={workout.type === "Strength" ? "default" : "secondary"}
-                      >
-                        {workout.type}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="mb-4">
-                      <h4 className="font-medium text-sm mb-2">Exercises:</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {workout.exercises.map((exercise) => (
-                          <Badge key={exercise.id} variant="outline">
-                            {exercise.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/dashboard/workout/${workout.id}`}>
-                          View Details
-                        </Link>
-                      </Button>
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/dashboard/workout/${workout.id}`}>
-                          Edit
-                        </Link>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   )
