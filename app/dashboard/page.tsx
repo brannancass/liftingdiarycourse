@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { getUserWorkoutsForDate } from "@/data/workouts"
 import { redirect } from "next/navigation"
 import { DateSelector } from "@/components/date-selector"
+import Link from "next/link"
 
 interface DashboardPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
@@ -53,9 +54,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         {/* Workouts List Section */}
         <div className="lg:col-span-2">
           <div className="mb-4">
-            <h2 className="text-2xl font-semibold mb-2">
-              Workouts for {formatSelectedDate(selectedDate)}
-            </h2>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-2xl font-semibold">
+                Workouts for {formatSelectedDate(selectedDate)}
+              </h2>
+              <Button asChild>
+                <Link href="/dashboard/workout/new">Add Workout</Link>
+              </Button>
+            </div>
             <p className="text-muted-foreground">
               {workoutsForDate.length} workout{workoutsForDate.length !== 1 ? "s" : ""} logged
             </p>
@@ -67,7 +73,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 <p className="text-muted-foreground mb-4">
                   No workouts logged for this date
                 </p>
-                <Button>Add Workout</Button>
+                <p className="text-sm text-muted-foreground">
+                  Click "Add Workout" above to get started!
+                </p>
               </CardContent>
             </Card>
           ) : (
@@ -102,11 +110,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
-                        View Details
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={`/dashboard/workout/${workout.id}`}>
+                          View Details
+                        </Link>
                       </Button>
-                      <Button variant="outline" size="sm">
-                        Edit
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={`/dashboard/workout/${workout.id}`}>
+                          Edit
+                        </Link>
                       </Button>
                     </div>
                   </CardContent>

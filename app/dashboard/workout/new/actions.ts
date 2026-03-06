@@ -67,7 +67,7 @@ export async function createWorkoutAction(prevState: any, formData: FormData) {
       success: true,
       workout: result.workout,
       message: "Workout created successfully",
-      redirectTo: `/dashboard/workout/${result.workout.id}`
+      redirectTo: "/dashboard"
     }
 
   } catch (error) {
