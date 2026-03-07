@@ -8,11 +8,18 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { SetsManager } from "@/components/sets-manager"
+import { Trash2 } from "lucide-react"
 import { createWorkoutAction } from "./actions"
 
 interface Exercise {
   name: string
   order: number
+  sets: Array<{
+    setNumber: number
+    reps?: number
+    weightLbs?: string
+  }>
 }
 
 type ActionState = {
@@ -30,7 +37,11 @@ type ActionState = {
 export default function NewWorkoutPage() {
   const [state, formAction, isPending] = useActionState<ActionState, FormData>(createWorkoutAction, null)
   const [exercises, setExercises] = useState<Exercise[]>([
-    { name: "", order: 1 }
+    {
+      name: "",
+      order: 1,
+      sets: [{ setNumber: 1, reps: undefined, weightLbs: undefined }]
+    }
   ])
   const router = useRouter()
 
@@ -44,7 +55,11 @@ export default function NewWorkoutPage() {
   const addExercise = () => {
     setExercises(prev => {
       const prevArray = prev || []
-      return [...prevArray, { name: "", order: prevArray.length + 1 }]
+      return [...prevArray, {
+        name: "",
+        order: prevArray.length + 1,
+        sets: [{ setNumber: 1, reps: undefined, weightLbs: undefined }]
+      }]
     })
   }
 
@@ -68,15 +83,26 @@ export default function NewWorkoutPage() {
     })
   }
 
+  const updateSets = (exerciseIndex: number, sets: Array<{ setNumber: number; reps?: number; weightLbs?: string }>) => {
+    setExercises(prev => {
+      const prevArray = prev || []
+      return prevArray.map((exercise, i) =>
+        i === exerciseIndex ? { ...exercise, sets } : exercise
+      )
+    })
+  }
+
   const handleSubmit = async (formData: FormData) => {
-    // Prepare exercises data
+    // Prepare exercises data with sets
     const exercisesArray = exercises || []
     const validExercises = exercisesArray
       .filter(exercise => exercise && exercise.name && exercise.name.trim() !== "")
       .map((exercise, index) => ({
         name: exercise.name.trim(),
-        order: index + 1
+        order: index + 1,
+        sets: exercise.sets.filter(set => set.reps !== undefined || set.weightLbs !== undefined)
       }))
+      .filter(exercise => exercise.sets.length > 0) // Only include exercises with at least one set with data
 
     // Add additional data to FormData
     formData.set("startedAt", new Date().toISOString())
@@ -97,7 +123,7 @@ export default function NewWorkoutPage() {
   const currentDate = format(new Date(), "do MMM yyyy")
 
   return (
-    <div className="container mx-auto max-w-2xl py-8">
+    <div className="container mx-auto max-w-3xl py-8">
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl font-bold">Create New Workout</CardTitle>
@@ -140,27 +166,43 @@ export default function NewWorkoutPage() {
               </div>
 
               {exercises && exercises.length > 0 ? exercises.map((exercise, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <Input
-                      placeholder={`Exercise ${index + 1} (e.g., Bench Press, Squats)`}
-                      value={exercise?.name || ""}
-                      onChange={(e) => updateExercise(index, e.target.value)}
-                      disabled={isPending}
-                    />
+                <Card key={index} className="p-4 space-y-4">
+                  {/* Exercise Name and Remove Button */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <Label htmlFor={`exercise-${index}-name`} className="text-sm font-medium">
+                        Exercise {index + 1}
+                      </Label>
+                      <Input
+                        id={`exercise-${index}-name`}
+                        placeholder="e.g., Bench Press, Squats"
+                        value={exercise?.name || ""}
+                        onChange={(e) => updateExercise(index, e.target.value)}
+                        disabled={isPending}
+                      />
+                    </div>
+                    {exercises && exercises.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeExercise(index)}
+                        disabled={isPending}
+                        className="mt-6 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
-                  {exercises && exercises.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeExercise(index)}
-                      disabled={isPending}
-                    >
-                      Remove
-                    </Button>
-                  )}
-                </div>
+
+                  {/* Sets Manager */}
+                  <SetsManager
+                    exerciseIndex={index}
+                    sets={exercise.sets}
+                    onSetsChange={updateSets}
+                    disabled={isPending}
+                  />
+                </Card>
               )) : (
                 <div className="text-center py-4">
                   <p className="text-muted-foreground">No exercises added yet.</p>
@@ -172,7 +214,7 @@ export default function NewWorkoutPage() {
               )}
 
               <p className="text-sm text-muted-foreground">
-                Add at least one exercise to continue. You can add sets and reps after creating the workout.
+                Add at least one exercise with sets to create your workout. Both reps and weight are optional - fill in what you want to track.
               </p>
             </div>
 

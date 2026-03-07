@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Card } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { SetsManager } from "@/components/sets-manager"
+import { Trash2 } from "lucide-react"
 import { updateWorkoutAction } from "./actions"
 import { WorkoutWithExercises } from "@/data/workouts"
 
@@ -13,6 +16,11 @@ interface Exercise {
   id?: number
   name: string
   order: number
+  sets: Array<{
+    setNumber: number
+    reps?: number
+    weightLbs?: string
+  }>
 }
 
 type ActionState = {
@@ -38,7 +46,14 @@ export function EditWorkoutForm({ workout }: EditWorkoutFormProps) {
     workout.exercises.map(ex => ({
       id: ex.id,
       name: ex.name,
-      order: ex.order
+      order: ex.order,
+      sets: ex.sets.length > 0
+        ? ex.sets.map(set => ({
+            setNumber: set.setNumber,
+            reps: set.reps ?? undefined,
+            weightLbs: set.weightLbs ?? undefined
+          }))
+        : [{ setNumber: 1, reps: undefined, weightLbs: undefined }] // Default to one empty set if none exist
     }))
   )
   const router = useRouter()
@@ -53,7 +68,11 @@ export function EditWorkoutForm({ workout }: EditWorkoutFormProps) {
   const addExercise = () => {
     setExercises(prev => {
       const maxOrder = prev.length > 0 ? Math.max(...prev.map(ex => ex.order)) : 0
-      return [...prev, { name: "", order: maxOrder + 1 }]
+      return [...prev, {
+        name: "",
+        order: maxOrder + 1,
+        sets: [{ setNumber: 1, reps: undefined, weightLbs: undefined }]
+      }]
     })
   }
 
@@ -75,15 +94,25 @@ export function EditWorkoutForm({ workout }: EditWorkoutFormProps) {
     )
   }
 
+  const updateSets = (exerciseIndex: number, sets: Array<{ setNumber: number; reps?: number; weightLbs?: string }>) => {
+    setExercises(prev =>
+      prev.map((exercise, i) =>
+        i === exerciseIndex ? { ...exercise, sets } : exercise
+      )
+    )
+  }
+
   const handleSubmit = async (formData: FormData) => {
-    // Prepare exercises data
+    // Prepare exercises data with sets
     const validExercises = exercises
       .filter(exercise => exercise.name && exercise.name.trim() !== "")
       .map((exercise, index) => ({
         id: exercise.id,
         name: exercise.name.trim(),
-        order: index + 1
+        order: index + 1,
+        sets: exercise.sets.filter(set => set.reps !== undefined || set.weightLbs !== undefined)
       }))
+      .filter(exercise => exercise.sets.length > 0) // Only include exercises with at least one set with data
 
     const data = {
       id: workout.id,
@@ -134,27 +163,43 @@ export function EditWorkoutForm({ workout }: EditWorkoutFormProps) {
         </div>
 
         {exercises.length > 0 ? exercises.map((exercise, index) => (
-          <div key={index} className="flex items-center gap-2">
-            <div className="flex-1">
-              <Input
-                placeholder={`Exercise ${index + 1} (e.g., Bench Press, Squats)`}
-                value={exercise.name}
-                onChange={(e) => updateExercise(index, e.target.value)}
-                disabled={isPending}
-              />
+          <Card key={index} className="p-4 space-y-4">
+            {/* Exercise Name and Remove Button */}
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <Label htmlFor={`exercise-${index}-name`} className="text-sm font-medium">
+                  Exercise {index + 1}
+                </Label>
+                <Input
+                  id={`exercise-${index}-name`}
+                  placeholder="e.g., Bench Press, Squats"
+                  value={exercise.name}
+                  onChange={(e) => updateExercise(index, e.target.value)}
+                  disabled={isPending}
+                />
+              </div>
+              {exercises.length > 1 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => removeExercise(index)}
+                  disabled={isPending}
+                  className="mt-6 text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
             </div>
-            {exercises.length > 1 && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => removeExercise(index)}
-                disabled={isPending}
-              >
-                Remove
-              </Button>
-            )}
-          </div>
+
+            {/* Sets Manager */}
+            <SetsManager
+              exerciseIndex={index}
+              sets={exercise.sets}
+              onSetsChange={updateSets}
+              disabled={isPending}
+            />
+          </Card>
         )) : (
           <div className="text-center py-4">
             <p className="text-muted-foreground">No exercises added yet.</p>
@@ -166,7 +211,7 @@ export function EditWorkoutForm({ workout }: EditWorkoutFormProps) {
         )}
 
         <p className="text-sm text-muted-foreground">
-          Add at least one exercise to continue.
+          Add at least one exercise with sets to save your workout. Both reps and weight are optional - fill in what you want to track.
         </p>
       </div>
 

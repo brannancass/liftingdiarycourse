@@ -1,5 +1,5 @@
 import { db } from "@/src/db"
-import { workouts, exercises } from "@/src/db/schema"
+import { workouts, exercises, sets } from "@/src/db/schema"
 import { eq, desc, and, sql } from "drizzle-orm"
 import { requireAuth } from "./auth"
 
@@ -13,6 +13,12 @@ export interface WorkoutWithExercises {
     id: number
     name: string
     order: number
+    sets: {
+      id: number
+      setNumber: number
+      reps: number | null
+      weightLbs: string | null
+    }[]
   }[]
   duration?: number
   type: string
@@ -31,14 +37,20 @@ export async function getUserWorkouts(): Promise<WorkoutWithExercises[]> {
       exerciseId: exercises.id,
       exerciseName: exercises.name,
       exerciseOrder: exercises.order,
+      setId: sets.id,
+      setNumber: sets.setNumber,
+      reps: sets.reps,
+      weightLbs: sets.weightLbs,
     })
     .from(workouts)
     .leftJoin(exercises, eq(exercises.workoutId, workouts.id))
+    .leftJoin(sets, eq(sets.exerciseId, exercises.id))
     .where(eq(workouts.userId, userId))
-    .orderBy(desc(workouts.startedAt))
+    .orderBy(desc(workouts.startedAt), exercises.order, sets.setNumber)
 
-  // Group exercises by workout
+  // Group exercises and sets by workout
   const workoutMap = new Map<number, WorkoutWithExercises>()
+  const exerciseMap = new Map<number, { id: number; name: string; order: number; sets: { id: number; setNumber: number; reps: number | null; weightLbs: string | null }[] }>()
 
   result.forEach((row) => {
     if (!workoutMap.has(row.id)) {
@@ -59,12 +71,28 @@ export async function getUserWorkouts(): Promise<WorkoutWithExercises[]> {
     }
 
     const workout = workoutMap.get(row.id)!
+
     if (row.exerciseId && row.exerciseName) {
-      workout.exercises.push({
-        id: row.exerciseId,
-        name: row.exerciseName,
-        order: row.exerciseOrder ?? 0,
-      })
+      if (!exerciseMap.has(row.exerciseId)) {
+        const exercise = {
+          id: row.exerciseId,
+          name: row.exerciseName,
+          order: row.exerciseOrder ?? 0,
+          sets: [] as { id: number; setNumber: number; reps: number | null; weightLbs: string | null }[]
+        }
+        exerciseMap.set(row.exerciseId, exercise)
+        workout.exercises.push(exercise)
+      }
+
+      const exercise = exerciseMap.get(row.exerciseId)!
+      if (row.setId && row.setNumber !== null) {
+        exercise.sets.push({
+          id: row.setId,
+          setNumber: row.setNumber,
+          reps: row.reps,
+          weightLbs: row.weightLbs,
+        })
+      }
     }
   })
 
@@ -91,9 +119,14 @@ export async function getUserWorkoutsForDate(date: Date): Promise<WorkoutWithExe
       exerciseId: exercises.id,
       exerciseName: exercises.name,
       exerciseOrder: exercises.order,
+      setId: sets.id,
+      setNumber: sets.setNumber,
+      reps: sets.reps,
+      weightLbs: sets.weightLbs,
     })
     .from(workouts)
     .leftJoin(exercises, eq(exercises.workoutId, workouts.id))
+    .leftJoin(sets, eq(sets.exerciseId, exercises.id))
     .where(
       and(
         eq(workouts.userId, userId),
@@ -101,10 +134,11 @@ export async function getUserWorkoutsForDate(date: Date): Promise<WorkoutWithExe
         sql`${workouts.startedAt} <= ${endOfDay}`
       )
     )
-    .orderBy(desc(workouts.startedAt))
+    .orderBy(desc(workouts.startedAt), exercises.order, sets.setNumber)
 
-  // Group exercises by workout
+  // Group exercises and sets by workout
   const workoutMap = new Map<number, WorkoutWithExercises>()
+  const exerciseMap = new Map<number, { id: number; name: string; order: number; sets: { id: number; setNumber: number; reps: number | null; weightLbs: string | null }[] }>()
 
   result.forEach((row) => {
     if (!workoutMap.has(row.id)) {
@@ -125,12 +159,28 @@ export async function getUserWorkoutsForDate(date: Date): Promise<WorkoutWithExe
     }
 
     const workout = workoutMap.get(row.id)!
+
     if (row.exerciseId && row.exerciseName) {
-      workout.exercises.push({
-        id: row.exerciseId,
-        name: row.exerciseName,
-        order: row.exerciseOrder ?? 0,
-      })
+      if (!exerciseMap.has(row.exerciseId)) {
+        const exercise = {
+          id: row.exerciseId,
+          name: row.exerciseName,
+          order: row.exerciseOrder ?? 0,
+          sets: [] as { id: number; setNumber: number; reps: number | null; weightLbs: string | null }[]
+        }
+        exerciseMap.set(row.exerciseId, exercise)
+        workout.exercises.push(exercise)
+      }
+
+      const exercise = exerciseMap.get(row.exerciseId)!
+      if (row.setId && row.setNumber !== null) {
+        exercise.sets.push({
+          id: row.setId,
+          setNumber: row.setNumber,
+          reps: row.reps,
+          weightLbs: row.weightLbs,
+        })
+      }
     }
   })
 
@@ -150,15 +200,21 @@ export async function getUserWorkoutById(workoutId: number): Promise<WorkoutWith
       exerciseId: exercises.id,
       exerciseName: exercises.name,
       exerciseOrder: exercises.order,
+      setId: sets.id,
+      setNumber: sets.setNumber,
+      reps: sets.reps,
+      weightLbs: sets.weightLbs,
     })
     .from(workouts)
     .leftJoin(exercises, eq(exercises.workoutId, workouts.id))
+    .leftJoin(sets, eq(sets.exerciseId, exercises.id))
     .where(
       and(
         eq(workouts.userId, userId),
         eq(workouts.id, workoutId)
       )
     )
+    .orderBy(exercises.order, sets.setNumber)
 
   if (result.length === 0) {
     return null
@@ -180,13 +236,30 @@ export async function getUserWorkoutById(workoutId: number): Promise<WorkoutWith
     type: "Strength",
   }
 
+  const exerciseMap = new Map<number, { id: number; name: string; order: number; sets: { id: number; setNumber: number; reps: number | null; weightLbs: string | null }[] }>()
+
   result.forEach((row) => {
     if (row.exerciseId && row.exerciseName) {
-      workout.exercises.push({
-        id: row.exerciseId,
-        name: row.exerciseName,
-        order: row.exerciseOrder ?? 0,
-      })
+      if (!exerciseMap.has(row.exerciseId)) {
+        const exercise = {
+          id: row.exerciseId,
+          name: row.exerciseName,
+          order: row.exerciseOrder ?? 0,
+          sets: [] as { id: number; setNumber: number; reps: number | null; weightLbs: string | null }[]
+        }
+        exerciseMap.set(row.exerciseId, exercise)
+        workout.exercises.push(exercise)
+      }
+
+      const exercise = exerciseMap.get(row.exerciseId)!
+      if (row.setId && row.setNumber !== null) {
+        exercise.sets.push({
+          id: row.setId,
+          setNumber: row.setNumber,
+          reps: row.reps,
+          weightLbs: row.weightLbs,
+        })
+      }
     }
   })
 
@@ -200,6 +273,11 @@ export async function createWorkout(data: {
   exercises: Array<{
     name: string
     order: number
+    sets: Array<{
+      setNumber: number
+      reps?: number
+      weightLbs?: string
+    }>
   }>
 }): Promise<{ workout: WorkoutWithExercises }> {
   const userId = await requireAuth()
@@ -216,10 +294,10 @@ export async function createWorkout(data: {
       })
       .returning()
 
-    // Create exercises if provided
-    let workoutExercises: { id: number; name: string; order: number }[] = []
+    // Create exercises and their sets if provided
+    let workoutExercises: { id: number; name: string; order: number; sets: { id: number; setNumber: number; reps: number | null; weightLbs: string | null }[] }[] = []
     if (data.exercises.length > 0) {
-      workoutExercises = await db
+      const createdExercises = await db
         .insert(exercises)
         .values(
           data.exercises.map((exercise, index) => ({
@@ -231,6 +309,26 @@ export async function createWorkout(data: {
           }))
         )
         .returning()
+
+      // Create sets for each exercise
+      for (let i = 0; i < createdExercises.length; i++) {
+        const exercise = createdExercises[i]
+        const exerciseData = data.exercises[i]
+
+        await createSetsForExercise(exercise.id, exerciseData.sets)
+
+        workoutExercises.push({
+          id: exercise.id,
+          name: exercise.name,
+          order: exercise.order,
+          sets: exerciseData.sets.map((set, setIndex) => ({
+            id: setIndex, // Temporary ID since we don't have the real DB ID
+            setNumber: set.setNumber,
+            reps: set.reps ?? null,
+            weightLbs: set.weightLbs ?? null
+          }))
+        })
+      }
     }
 
     return {
@@ -257,6 +355,11 @@ export async function updateWorkout(data: {
     id?: number
     name: string
     order: number
+    sets: Array<{
+      setNumber: number
+      reps?: number
+      weightLbs?: string
+    }>
   }>
 }): Promise<{ workout: WorkoutWithExercises }> {
   const userId = await requireAuth()
@@ -290,15 +393,15 @@ export async function updateWorkout(data: {
       )
       .returning()
 
-    // Delete existing exercises for this workout
+    // Delete existing exercises for this workout (cascade will delete sets)
     await db
       .delete(exercises)
       .where(eq(exercises.workoutId, data.id))
 
-    // Insert new/updated exercises
-    let workoutExercises: { id: number; name: string; order: number }[] = []
+    // Insert new/updated exercises and their sets
+    let workoutExercises: { id: number; name: string; order: number; sets: { id: number; setNumber: number; reps: number | null; weightLbs: string | null }[] }[] = []
     if (data.exercises.length > 0) {
-      workoutExercises = await db
+      const createdExercises = await db
         .insert(exercises)
         .values(
           data.exercises.map((exercise) => ({
@@ -310,6 +413,26 @@ export async function updateWorkout(data: {
           }))
         )
         .returning()
+
+      // Create sets for each exercise
+      for (let i = 0; i < createdExercises.length; i++) {
+        const exercise = createdExercises[i]
+        const exerciseData = data.exercises[i]
+
+        await createSetsForExercise(exercise.id, exerciseData.sets)
+
+        workoutExercises.push({
+          id: exercise.id,
+          name: exercise.name,
+          order: exercise.order,
+          sets: exerciseData.sets.map((set, setIndex) => ({
+            id: setIndex, // Temporary ID since we don't have the real DB ID
+            setNumber: set.setNumber,
+            reps: set.reps ?? null,
+            weightLbs: set.weightLbs ?? null
+          }))
+        })
+      }
     }
 
     return {
@@ -330,4 +453,40 @@ export async function updateWorkout(data: {
     }
     throw new Error("Failed to update workout")
   }
+}
+
+// Helper function to create sets for an exercise
+async function createSetsForExercise(exerciseId: number, setsData: Array<{
+  setNumber: number
+  reps?: number
+  weightLbs?: string
+}>): Promise<void> {
+  if (setsData.length > 0) {
+    await db
+      .insert(sets)
+      .values(
+        setsData.map((set) => ({
+          exerciseId,
+          setNumber: set.setNumber,
+          reps: set.reps ?? null,
+          weightLbs: set.weightLbs ?? null,
+          createdAt: new Date()
+        }))
+      )
+  }
+}
+
+// Helper function to update sets for an exercise (delete existing and create new)
+async function updateSetsForExercise(exerciseId: number, setsData: Array<{
+  setNumber: number
+  reps?: number
+  weightLbs?: string
+}>): Promise<void> {
+  // Delete existing sets for this exercise
+  await db
+    .delete(sets)
+    .where(eq(sets.exerciseId, exerciseId))
+
+  // Create new sets
+  await createSetsForExercise(exerciseId, setsData)
 }

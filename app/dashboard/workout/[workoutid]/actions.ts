@@ -11,7 +11,12 @@ const UpdateWorkoutSchema = z.object({
   exercises: z.array(z.object({
     id: z.number().int().positive().optional(),
     name: z.string().min(1, "Exercise name is required").max(100, "Exercise name must be 100 characters or less"),
-    order: z.number().int().positive("Exercise order must be positive")
+    order: z.number().int().positive("Exercise order must be positive"),
+    sets: z.array(z.object({
+      setNumber: z.number().int().min(1, "Set number must be at least 1"),
+      reps: z.number().int().min(0, "Reps must be 0 or greater").max(1000, "Reps must be less than 1000").optional(),
+      weightLbs: z.string().regex(/^\d*\.?\d*$/, "Weight must be a valid number").optional()
+    })).min(1, "At least one set required per exercise").max(50, "Maximum 50 sets per exercise")
   })).min(1, "At least one exercise is required").max(20, "Maximum 20 exercises allowed")
 })
 
@@ -24,6 +29,11 @@ export async function updateWorkoutAction(
       id?: number
       name: string
       order: number
+      sets: Array<{
+        setNumber: number
+        reps?: number
+        weightLbs?: string
+      }>
     }>
   }
 ) {
@@ -47,7 +57,7 @@ export async function updateWorkoutAction(
       success: true,
       workout: result.workout,
       message: "Workout updated successfully",
-      redirectTo: `/dashboard/workout/${validatedData.id}`
+      redirectTo: `/dashboard`
     }
 
   } catch (error) {

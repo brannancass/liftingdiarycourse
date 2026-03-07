@@ -15,7 +15,12 @@ const CreateWorkoutSchema = z.object({
   }, "Invalid date format"),
   exercises: z.array(z.object({
     name: z.string().min(1, "Exercise name is required").max(100, "Exercise name must be less than 100 characters"),
-    order: z.number().int().min(1, "Exercise order must be at least 1")
+    order: z.number().int().min(1, "Exercise order must be at least 1"),
+    sets: z.array(z.object({
+      setNumber: z.number().int().min(1, "Set number must be at least 1"),
+      reps: z.number().int().min(0, "Reps must be 0 or greater").max(1000, "Reps must be less than 1000").optional(),
+      weightLbs: z.string().regex(/^\d*\.?\d*$/, "Weight must be a valid number").optional()
+    })).min(1, "At least one set required per exercise").max(50, "Maximum 50 sets per exercise")
   })).min(1, "At least one exercise is required").max(20, "Maximum 20 exercises per workout")
 })
 
@@ -26,7 +31,7 @@ export async function createWorkoutAction(prevState: any, formData: FormData) {
   const startedAt = formData.get("startedAt") as string
   const exercisesJson = formData.get("exercises") as string
 
-  let exercises: Array<{ name: string; order: number }> = []
+  let exercises: Array<{ name: string; order: number; sets: Array<{ setNumber: number; reps?: number; weightLbs?: string }> }> = []
   try {
     exercises = JSON.parse(exercisesJson)
   } catch (parseError) {
