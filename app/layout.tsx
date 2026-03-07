@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import {
   ClerkProvider,
@@ -41,7 +42,16 @@ export default function RootLayout({
         >
           <ThemeProvider defaultTheme="dark">
             <header className="flex items-center justify-between p-4">
-              <span className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Lifting Diary</span>
+              <SignedOut>
+                <Link href="/" className="text-lg font-semibold text-zinc-900 dark:text-zinc-50 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">
+                  Lifting Diary
+                </Link>
+              </SignedOut>
+              <SignedIn>
+                <Link href="/dashboard" className="text-lg font-semibold text-zinc-900 dark:text-zinc-50 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">
+                  Lifting Diary
+                </Link>
+              </SignedIn>
               <div className="flex items-center gap-2">
                 <ThemeToggle />
                 <SignedOut>
